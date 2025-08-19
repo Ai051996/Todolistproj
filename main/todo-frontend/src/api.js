@@ -52,8 +52,9 @@ export const todoAPI = {
     return response.data;
   },
 
-  updateTodo: async (id, completed) => {
-    const response = await api.put(`/todos/${id}`, { completed });
+  updateTodo: async (id, completedOrPayload) => {
+    const payload = typeof completedOrPayload === 'object' ? completedOrPayload : { completed: completedOrPayload };
+    const response = await api.put(`/todos/${id}`, payload);
     return response.data;
   },
 
