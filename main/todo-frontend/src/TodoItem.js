@@ -46,7 +46,7 @@ const TodoItem = ({ todo, onToggle, onDelete, onEdit }) => {
           sx={{ flex: 1 }}
         />
       ) : (
-        <span>{todo.text}</span>
+        <span>{todo.title}</span>
       )}
     </ListItem>
   );

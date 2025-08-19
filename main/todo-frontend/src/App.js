@@ -1,53 +1,120 @@
-import React, { useState } from 'react';
-import { Container, Typography, Paper } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Typography, Paper, Button, Box, CircularProgress } from '@mui/material';
+import { AuthProvider, useAuth } from './AuthContext';
+import { todoAPI } from './api';
 import AddTodo from './AddTodo';
 import TodoList from './TodoList';
+import Login from './Login';
 
-function App() {
-  const [todos, setTodos] = useState([
-    // Example initial data
-    // { id: 1, text: 'Sample Task', completed: false },
-  ]);
+function TodoApp() {
+  const { user, logout, loading } = useAuth();
+  const [todos, setTodos] = useState([]);
+  const [loadingTodos, setLoadingTodos] = useState(false);
 
-  const handleAdd = (text) => {
-    setTodos([...todos, { id: Date.now(), text, completed: false }]);
+  useEffect(() => {
+    if (user) {
+      loadTodos();
+    }
+  }, [user]);
+
+  const loadTodos = async () => {
+    setLoadingTodos(true);
+    try {
+      const data = await todoAPI.getTodos();
+      setTodos(data);
+    } catch (error) {
+      console.error('Failed to load todos:', error);
+    } finally {
+      setLoadingTodos(false);
+    }
   };
 
-  const handleToggle = (id) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
+  const handleAdd = async (text) => {
+    try {
+      const newTodo = await todoAPI.createTodo(text);
+      setTodos([...todos, newTodo]);
+    } catch (error) {
+      console.error('Failed to add todo:', error);
+    }
+  };
+
+  const handleToggle = async (id) => {
+    try {
+      const todo = todos.find(t => t.id === id);
+      const updatedTodo = await todoAPI.updateTodo(id, !todo.completed);
+      setTodos(todos.map(t => t.id === id ? updatedTodo : t));
+    } catch (error) {
+      console.error('Failed to update todo:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await todoAPI.deleteTodo(id);
+      setTodos(todos.filter(todo => todo.id !== id));
+    } catch (error) {
+      console.error('Failed to delete todo:', error);
+    }
+  };
+
+  const handleEdit = async (id, newText) => {
+    try {
+      const updatedTodo = await todoAPI.updateTodo(id, { title: newText });
+      setTodos(todos.map(t => t.id === id ? updatedTodo : t));
+    } catch (error) {
+      console.error('Failed to edit todo:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
     );
-  };
+  }
 
-  const handleDelete = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
-  };
-
-  const handleEdit = (id, newText) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, text: newText } : todo
-      )
-    );
-  };
+  if (!user) {
+    return <Login />;
+  }
 
   return (
     <Container maxWidth="sm" sx={{ mt: 6 }}>
       <Paper elevation={6} sx={{ p: 4, mb: 2 }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          To-Do List
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" align="center">
+            To-Do List
+          </Typography>
+          <Button variant="outlined" onClick={logout}>
+            Logout
+          </Button>
+        </Box>
+        <Typography variant="body2" sx={{ mb: 2, textAlign: 'center' }}>
+          Welcome, {user.username}!
         </Typography>
         <AddTodo onAdd={handleAdd} />
-        <TodoList
-          todos={todos}
-          onToggle={handleToggle}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
-        />
+        {loadingTodos ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <TodoList
+            todos={todos}
+            onToggle={handleToggle}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+          />
+        )}
       </Paper>
     </Container>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <TodoApp />
+    </AuthProvider>
   );
 }
 
